@@ -2,6 +2,7 @@
 
 http://blog.masuidrive.jp/2015/04/06/vagrant-remote/ ‎
 
+リモートマシンでVagrantを実行するコマンド。
 
 検索していくと、[本家のIssuesでもvagrantをリモート実行する議論](https://github.com/mitchellh/vagrant/issues/401)が行われていました。そこで紹介されているプラグインを試してましたが用途とは合いませんでしたし、バージョンアップの多いvagrantで使い続けられるか心配でした。
 
