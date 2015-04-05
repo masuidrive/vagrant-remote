@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#
+# リモートホストでvagrantを実行する
+
+if [ -f .vagrant-remote ]; then
+  source .vagrant-remote
+fi
+
+if [ -z "${REMOTE_NODE+x}" ] ; then
+  echo "require REMOTE_NODE environment variable"
+  exit 1;
+fi
+
+
+if [ -z "${REMOTE_PATH+x}" ] ; then
+  REMOTE_PATH="/tmp/`pwd|sed -e "s/.*\///" `"
+fi
+
+REMOTE_HOST=`echo $REMOTE_NODE|sed -e "s/.*@//g"`
+NETWORK=`echo $REMOTE_HOST|sed -e "s/\..*//g"`
+MASTER_HOST=`ifconfig|grep "inet $NETWORK"|sed -E "s/.*inet[\t ]*([0-9.]+).*/\1/g"|head -n 1`
+MASTER_PATH=`pwd -P`
+
+function remove_from_exports() {
+  sudo sh -c "touch /etc/exports"
+  sudo sh -c "cat /etc/exports | fgrep -v \"$1\" > /etc/exports"
+  sudo sh -c "sudo nfsd update"
+}
+
+function append_to_exports() {
+  sudo sh -c "echo \"$1 $2\" >> /etc/exports"
+  sudo sh -c "sudo nfsd update"
+}
+
+function vagrant_up() {
+  echo "Add current path to /etc/exports"
+  remove_from_exports "$MASTER_PATH"
+  append_to_exports "$MASTER_PATH" "$REMOTE_HOST"
+
+  echo "Connecting to $REMOTE_NODE..."
+  ssh "$REMOTE_NODE" "
+    mkdir -p \"$REMOTE_PATH/mnt\"
+    umount -f \"$REMOTE_PATH/mnt\"
+    mount -t nfs \"$MASTER_HOST:$MASTER_PATH\" \"$REMOTE_PATH/mnt\"
+    cp \"$REMOTE_PATH/mnt/Vagrantfile\" \"$REMOTE_PATH\"
+    cd \"$REMOTE_PATH\"
+    MOUNT=\"$REMOTE_PATH\" vagrant up $1
+  "
+}
+
+function vagrant_halt() {
+  echo "Connecting to $REMOTE_NODE..."
+  ssh "$REMOTE_NODE" "
+    cd \"$REMOTE_PATH\"
+    MOUNT=\"$REMOTE_PATH\" vagrant halt $1"
+  ssh $REMOTE_NODE "umount -f \"$REMOTE_PATH/mnt\""
+  echo "Remove current path to /etc/exports"
+  remove_from_exports "$MASTER_PATH"
+}
+
+function vagrant_ssh() {
+  echo "Connecting to $REMOTE_NODE..."
+  ssh -t "$REMOTE_NODE" "
+    cd \"$REMOTE_PATH\"
+    vagrant ssh $1
+  "
+}
+
+function vagrant_destroy() {
+  vagrant_halt
+  ssh -t "$REMOTE_NODE" "
+    cd \"$REMOTE_PATH\"
+    vagrant destroy $1 -f
+  "
+}
+
+case "$1" in
+  up)
+    vagrant_up $2
+    ;;
+  halt)
+    vagrant_halt $2
+    ;;
+  ssh)
+    vagrant_ssh $2
+    ;;
+  destroy)
+    vagrant_destroy $2
+    ;;
+esac
