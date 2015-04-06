@@ -14,12 +14,20 @@ https://github.com/masuidrive/vagrant-remote
 
 Vagrantfileと同じディレクトリに下記の様な`.vagrant-node`ファイルを置き、リモート実行するホストを指定します。あと同時にテンポラリディレクトリを指定します。
 
-<pre># .vagrant-remote
+```
+# .vagrant-remote
 export REMOTE_NODE="user1@10.0.1.9"  # ユーザ名は省略できます
 export REMOTE_PATH="/Users/masuidrive/tmp" # 指定しなくてもOK
-</pre>
+```
 
 リモート実行するノードはLinuxかOSXでvagrantをインストールしておいてください。OSXでのみテストしているので、Linuxで動かなかったらPull Requestをお待ちしてますw
+
+```
+config.vm.synced_folder ".", "/vagrant"
+↓
+config.vm.synced_folder (ENV['MOUNT'] || "."), "/vagrant"
+```
+
 
 これで、`vagrant-remote up`をすると、リモートノードにsshしてNFSでローカルフォルダをマウントしてvagrant upを実行します。
 
